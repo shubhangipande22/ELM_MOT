@@ -1,0 +1,196 @@
+clc
+clear all
+close all
+tstart=tic
+% [fnm dir]=uigetfile('*.*','Select Groundtruth')
+load gt2 
+
+path=cd;
+
+% K-fold validation 
+
+K=2;
+nim=100;
+testsq=K:K:nim;
+testsq=testsq(randperm(nim/2));
+transeq=1:nim;
+transeq(testsq)=[];
+
+[fnm dir]=uigetfile('*.*')
+
+
+
+cd(dir)
+
+a=ls('*.jpg');
+
+b=length(a);
+cd(path)
+traindata=[];
+targetdata=[];
+for k=1:length(pos)
+    pos1=pos{k};
+xc{k,1}=pos1(:,1)+pos1(:,3)/2;
+yc{k,2}=pos1(:,2)+pos1(:,4)/2;
+end
+for i=transeq
+    
+    im=imread([dir a(i,:)]);
+    figure(1)
+    imshow(im)
+    temp=[];
+    tdata=[];
+    I2 = blockproc(im,[100 100],@wfeat_v1);
+    for k=1:length(pos)
+        pos1=pos{k};
+    temp=[temp;pos1(i,:)'];
+    I1=imresize(I2,[32 32]);
+    tdata(:,k)=I1(:);
+    end
+    traindata=[traindata I2(:)];
+    targetdata=[targetdata temp(:)];
+    h=imrect(gca,temp(1:4)');
+    h=imrect(gca,temp(5:8)');
+    h=imrect(gca,temp(9:12)');
+    pause(0.1)
+    title(num2str(i))
+   
+    
+end
+%%
+tic
+mdl = extreme_learning_machine_regressor(traindata', targetdata'); % Train ELM
+training_time=toc
+%%
+tic
+y = mdl.predict(traindata')
+clss_time=toc
+
+% y = mdl.predict(imnoise(traindata',"gaussian",0,255));
+for k=1:length(pos) 
+    tp=4*(k-1);
+pos1=targetdata';
+xco(:,k)=pos1(:,tp+1)+pos1(:,tp+3)/2;
+yco(:,k)=pos1(:,tp+2)+pos1(:,tp+4)/2;
+end
+
+for k=1:length(pos) 
+    tp=4*(k-1);
+pos1=y;
+xce(:,k)=pos1(:,tp+1)+pos1(:,tp+3)/2;
+yce(:,k)=pos1(:,tp+2)+pos1(:,tp+4)/2;
+end
+
+errorx= xco-xce;
+errory= yco-yce;
+figure(5)
+plot(1:length(xce),errorx, 'b')
+hold on
+plot(1:length(yce),errory, 'r')
+
+
+
+
+%%
+targetdata=[];
+ind=1;
+for i=testsq
+     im=imread([dir a(i,:)]);
+     %%im = imnoise(im,'gaussian',0.1,0.15);
+     %%im = imnoise(im,'salt & pepper',0.01);                                  
+    figure(1) 
+    imshow(im)
+    I2 = blockproc(im,[100 100],@wfeat_v1);
+    temp=[];
+    for k=1:length(pos)
+        pos1=pos{k};
+    temp=[temp;pos1(i,:)'];
+    I1=imresize(I2,[32 32]);
+    tdata(:,k)=I1(:);
+    end
+    traindata=[traindata I2(:)];
+    targetdata=[targetdata temp(:)];
+      
+    %%y1(ind,:) = mdl.predict(traindata');
+    y1(ind,:) = mdl.predict(I2(:)');
+    h=imrect(gca,y1(ind,1:4));
+     h=imrect(gca,y1(ind,5:8));
+      h=imrect(gca,y1(ind,9:12));
+    pause(0.1)
+    title(num2str(i))
+    
+    ind=ind+1;
+    
+end
+
+
+for k=1:length(pos) 
+    tp=4*(k-1);
+pos1=targetdata';
+xco(:,k)=pos1(:,tp+1)+pos1(:,tp+3)/2;
+yco(:,k)=pos1(:,tp+2)+pos1(:,tp+4)/2;
+end
+
+for k=1:length(pos) 
+    tp=4*(k-1);
+pos1=y1;
+xce(:,k)=pos1(:,tp+1)+pos1(:,tp+3)/2;
+yce(:,k)=pos1(:,tp+2)+pos1(:,tp+4)/2;
+end
+
+errorx= xco-xce;
+errory= yco-yce;
+figure(6)
+plot(1:length(xce),errorx, 'b')
+hold on
+plot(1:length(yce),errory, 'r')
+
+th=4
+for i=1:size(errorx,2)
+  ind=find(errorx(:,i)>th| errory(:,i)>th) ;
+  fclass(i)=length(ind);
+end
+
+nfram=size(yce,1);
+        
+nop=size(yce,2);
+
+telapse=tic
+
+for i=1:nfram
+    for j=1:nop
+        pcx=xco(i,j);
+        pcy=yco(i,j);
+        xsq=(xce(i,:)-pcx).^2
+        ysq=(yce(i,:)-pcy).^2
+
+        d=sqrt(xsq+ysq);
+        [dmin pn]=min(d);
+        tp(i,j)=j;
+        mp(i,j)=pn;
+    end
+end
+
+TFPS=toc(telapse)
+FPS=nfram/TFPS
+
+
+for i=1:nop
+    mp1=mp;
+
+   TP(i)=length(find(mp(:,i)==i))/nfram;
+mp1(:,i)=[];
+   FP(i)=length(find(mp1==i))/numel(mp1);
+   FN(i)=length(find(mp(:,i)~=i))/nfram;
+
+   TN(i)=length(find(mp1~=i))/numel(mp1);
+end
+DetA=TP./(TP+FP+FN);
+MOTA=1-(FP+FN);
+IDF1=TP./(TP+0.5*FP+0.5*FN)
+DetAM=mean(DetA)
+MOTAm=mean(MOTA)
+IDF1m=mean(IDF1)
+
+Elapced_Time=toc(tstart)
+
