@@ -1,0 +1,21 @@
+function [E]=wfeat_v1(im)
+im1=im(:,:,1);
+im2=im(:,:,2);
+im3=im(:,:,3);
+
+[ca11 cd11 cd12 cd13]=dwt2(im1,'haar');
+[ca21 cd21 cd22 cd23]=dwt2(im2,'haar');
+[ca31 cd31 cd32 cd33]=dwt2(im3,'haar');
+
+E(1)=mean2(ca11.^2);
+E(2)=mean2(cd11.^2);
+E(3)=mean2(cd12.^2);
+E(4)=mean2(cd13.^2);
+E(5)=mean2(ca21.^2);
+E(6)=mean2(cd21.^2);
+E(7)=mean2(cd22.^2);
+E(8)=mean2(cd23.^2);
+E(9)=mean2(ca31.^2);
+E(10)=mean2(cd31.^2);
+E(11)=mean2(cd32.^2);
+E(12)=mean2(cd33.^2);
