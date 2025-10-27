@@ -2,8 +2,8 @@ clc
 clear all
 close all
 tstart=tic
-
-load gt2 
+[fnm dir]=uigetfile('*.*','Select Groundtruth')
+% load gt2 
 
 path=cd;
 
