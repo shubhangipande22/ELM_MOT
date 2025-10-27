@@ -1,0 +1,15 @@
+clc
+clear all
+close all
+fnm=uigetfile('*.*');
+v = VideoReader(fnm);
+mkdir(fnm(1:10))
+path=cd;
+path1=[path '\' fnm(1:10)]
+i=1;
+while hasFrame(v)
+    frame = readFrame(v);
+    I=(frame);
+    imwrite(I,[path1 '\' num2str(i) '.jpg']);
+    i=i+1;
+end
